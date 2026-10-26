@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard X Total Entregados 2026-I</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #1a73e8;
@@ -21,19 +20,9 @@
             margin: 0;
             padding: 20px;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            color: var(--primary);
-            margin: 0;
-        }
-        .header p {
-            color: #666;
-            font-size: 0.9em;
-        }
-        /* Tarjetas de Resumen */
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: var(--primary); margin: 0; }
+        .header p { color: #666; font-size: 0.9em; }
         .kpi-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -52,11 +41,8 @@
         }
         .kpi-card.entregados { border-left-color: var(--success); }
         .kpi-card.faltantes { border-left-color: var(--danger); }
-        
         .kpi-title { font-size: 0.9em; color: #666; text-transform: uppercase; letter-spacing: 1px; }
         .kpi-value { font-size: 2em; font-weight: bold; margin: 10px 0 0 0; color: var(--text); }
-
-        /* Tabla */
         .table-container {
             background: var(--card-bg);
             padding: 20px;
@@ -64,11 +50,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             overflow-x: auto;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
         th {
             background-color: #f8f9fa;
             color: #333;
@@ -78,26 +60,10 @@
             position: sticky;
             top: 0;
         }
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
         tr:hover { background-color: #f1f3f4; }
-        
-        /* Barra de progreso en la tabla */
-        .progress-bar {
-            width: 100%;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            height: 8px;
-            margin-top: 5px;
-        }
-        .progress-fill {
-            height: 8px;
-            border-radius: 10px;
-            background-color: var(--success);
-        }
-        
+        .progress-bar { width: 100%; background-color: #e0e0e0; border-radius: 10px; height: 8px; margin-top: 5px; }
+        .progress-fill { height: 8px; border-radius: 10px; background-color: var(--success); }
         .search-box {
             margin-bottom: 15px;
             padding: 10px;
@@ -108,16 +74,16 @@
             font-size: 1em;
         }
         .loading { text-align: center; font-size: 1.2em; color: var(--primary); }
+        .foot { color: #666; font-size: 0.85em; margin-top: 12px; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1>📊 Dashboard de Entregas 2026-I</h1>
-        <p>Monitoreo en tiempo real de carnés entregados por Escuela</p>
+        <p>Monitoreo de carnés entregados por Escuela</p>
     </div>
 
-    <!-- Resumen Global (KPIs) -->
     <div class="kpi-container">
         <div class="kpi-card">
             <div class="kpi-title">Total Carnés</div>
@@ -133,7 +99,6 @@
         </div>
     </div>
 
-    <!-- Tabla Detallada -->
     <div class="table-container">
         <input type="text" id="searchInput" class="search-box" placeholder="Buscar escuela...">
         <table id="dataTable">
@@ -150,109 +115,111 @@
                 <tr><td colspan="5" class="loading">Cargando datos...</td></tr>
             </tbody>
         </table>
+        <p class="foot" id="foot"></p>
     </div>
 
     <script>
-        // ⚠️ REEMPLAZA ESTE ENLACE POR EL QUE OBTUVISTE EN EL PASO 1 (PUBLICAR EN LA WEB -> CSV)
         const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQyj0qnKCKF7cdQeOCZjiFCsONH-4TAH6Zv9us3COgMlbjhiu4zGw_-VzVZtmsl68SNxpRdoYav4Yf/pub?gid=0&single=true&output=csv';
+        const REFRESH_MIN = 5; // actualización automática, en minutos
+
+        // Lector de CSV que respeta comillas y nombres con espacios
+        function parseCSV(text) {
+            const out = []; let row = [], cur = '', q = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (q) {
+                    if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+                    else if (c === '"') q = false;
+                    else cur += c;
+                } else if (c === '"') q = true;
+                else if (c === ',') { row.push(cur); cur = ''; }
+                else if (c === '\n') { row.push(cur); out.push(row); row = []; cur = ''; }
+                else if (c !== '\r') cur += c;
+            }
+            if (cur || row.length) { row.push(cur); out.push(row); }
+            return out;
+        }
+
+        const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
         async function fetchData() {
             try {
                 const response = await fetch(SHEET_CSV_URL);
-                const csvText = await response.text();
-                processData(csvText);
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                processData(await response.text());
+                document.getElementById('foot').textContent =
+                    'Actualizado: ' + new Date().toLocaleString('es-PE') + ' · se actualiza solo cada ' + REFRESH_MIN + ' min';
             } catch (error) {
                 console.error("Error al obtener datos:", error);
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error al cargar los datos. Verifica el enlace CSV.</td></tr>';
+                document.getElementById('tableBody').innerHTML =
+                    '<tr><td colspan="5" style="text-align:center; color:red;">Error al cargar los datos. Verifica el enlace CSV y que esté publicado sin restricción de organización.</td></tr>';
             }
         }
 
         function processData(csv) {
-            // Separar por líneas y luego por comas (ignorando comas dentro de comillas si las hubiera)
-            const lines = csv.split('\n').filter(line => line.trim() !== '');
-            const headers = lines[0].split(',');
-            
-            let totalEntregados = 0;
-            let totalCarnes = 0;
-            let totalFaltantes = 0;
+            const lines = parseCSV(csv).slice(1); // sin encabezados
+            let totalEntregados = 0, totalCarnes = 0, totalFaltantes = 0;
+            let sumE = 0, sumT = 0, sumF = 0;
             let tableHTML = '';
 
-            // Iterar desde la fila 1 (saltando encabezados)
-            for (let i = 1; i < lines.length; i++) {
-                // Expresión regular para manejar comas dentro de comillas
-                const row = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                if (!row || row.length < 4) continue;
+            for (const row of lines) {
+                if (row.length < 4 || !row[0].trim()) continue;
 
-                // Limpiar comillas
-                const escuela = row[0].replace(/"/g, '').trim();
-                const entregados = parseInt(row[1].replace(/"/g, '')) || 0;
-                const total = parseInt(row[2].replace(/"/g, '')) || 0;
-                const faltantes = parseInt(row[3].replace(/"/g, '')) || 0;
+                const escuela = row[0].trim();
+                const entregados = parseInt(row[1]) || 0;
+                const total = parseInt(row[2]) || 0;
+                const faltantes = parseInt(row[3]) || 0;
 
-                // Si es la fila de TOTAL, guardamos los datos globales
                 if (escuela.toUpperCase() === 'TOTAL') {
                     totalEntregados = entregados;
                     totalCarnes = total;
                     totalFaltantes = faltantes;
-                    continue; // No la mostramos en la tabla, ya la mostramos en las tarjetas
+                    continue;
                 }
 
-                // Calcular porcentaje de progreso
+                sumE += entregados; sumT += total; sumF += faltantes;
+
                 const porcentaje = total > 0 ? Math.round((entregados / total) * 100) : 0;
-                
-                // Color de la barra según el progreso
                 let colorBarra = 'var(--success)';
                 if (porcentaje < 50) colorBarra = 'var(--danger)';
-                else if (porcentaje < 80) colorBarra = '#fbbc04'; // Amarillo
+                else if (porcentaje < 80) colorBarra = '#fbbc04';
 
                 tableHTML += `
                     <tr>
-                        <td><strong>${escuela}</strong></td>
-                        <td>${entregados}</td>
-                        <td>${total}</td>
-                        <td style="color: ${faltantes > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: bold;">${faltantes}</td>
+                        <td><strong>${esc(escuela)}</strong></td>
+                        <td>${entregados.toLocaleString('es-PE')}</td>
+                        <td>${total.toLocaleString('es-PE')}</td>
+                        <td style="color: ${faltantes > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: bold;">${faltantes.toLocaleString('es-PE')}</td>
                         <td>
-                            <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:2px;">
-                                <span>${porcentaje}%</span>
-                            </div>
+                            <div style="font-size:0.8em; margin-bottom:2px;">${porcentaje}%</div>
                             <div class="progress-bar">
                                 <div class="progress-fill" style="width: ${porcentaje}%; background-color: ${colorBarra};"></div>
                             </div>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             }
 
-            // Actualizar KPIs
-            document.getElementById('totalCarnes').innerText = totalCarnes.toLocaleString();
-            document.getElementById('totalEntregados').innerText = totalEntregados.toLocaleString();
-            document.getElementById('totalFaltantes').innerText = totalFaltantes.toLocaleString();
+            // Si la hoja no trae fila TOTAL, se calcula sumando las escuelas
+            if (!totalCarnes) { totalEntregados = sumE; totalCarnes = sumT; totalFaltantes = sumF; }
 
-            // Actualizar Tabla
+            document.getElementById('totalCarnes').innerText = totalCarnes.toLocaleString('es-PE');
+            document.getElementById('totalEntregados').innerText = totalEntregados.toLocaleString('es-PE');
+            document.getElementById('totalFaltantes').innerText = totalFaltantes.toLocaleString('es-PE');
             document.getElementById('tableBody').innerHTML = tableHTML;
-
-            // Configurar el buscador
-            setupSearch();
+            applyFilter();
         }
 
-        function setupSearch() {
-            const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('keyup', function() {
-                const filter = this.value.toLowerCase();
-                const rows = document.querySelectorAll('#dataTable tbody tr');
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    row.style.display = text.includes(filter) ? '' : 'none';
-                });
+        function applyFilter() {
+            const filter = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('#dataTable tbody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
         }
 
-        // Cargar datos al iniciar
-        fetchData();
+        document.getElementById('searchInput').addEventListener('input', applyFilter);
 
-        // Opcional: Actualizar automáticamente cada 5 minutos (300000 ms)
-        // setInterval(fetchData, 300000); 
+        fetchData();
+        setInterval(fetchData, REFRESH_MIN * 60 * 1000);
     </script>
 </body>
 </html>
