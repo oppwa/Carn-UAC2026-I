@@ -81,7 +81,7 @@
 
     <div class="header">
         <h1>📊 Dashboard de Entregas 2026-I</h1>
-        <p>Monitoreo de carnés entregados por Escuela</p>
+        <p>Carnés entregados por Escuela</p>
     </div>
 
     <div class="kpi-container">
@@ -115,111 +115,77 @@
                 <tr><td colspan="5" class="loading">Cargando datos...</td></tr>
             </tbody>
         </table>
-        <p class="foot" id="foot"></p>
+        
     </div>
 
     <script>
-        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSQyj0qnKCKF7cdQeOCZjiFCsONH-4TAH6Zv9us3COgMlbjhiu4zGw_-VzVZtmsl68SNxpRdoYav4Yf/pub?gid=0&single=true&output=csv';
-        const REFRESH_MIN = 5; // actualización automática, en minutos
-
-        // Lector de CSV que respeta comillas y nombres con espacios
-        function parseCSV(text) {
-            const out = []; let row = [], cur = '', q = false;
-            for (let i = 0; i < text.length; i++) {
-                const c = text[i];
-                if (q) {
-                    if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
-                    else if (c === '"') q = false;
-                    else cur += c;
-                } else if (c === '"') q = true;
-                else if (c === ',') { row.push(cur); cur = ''; }
-                else if (c === '\n') { row.push(cur); out.push(row); row = []; cur = ''; }
-                else if (c !== '\r') cur += c;
-            }
-            if (cur || row.length) { row.push(cur); out.push(row); }
-            return out;
-        }
+        // Datos incluidos directamente en el archivo (no se carga nada externo)
+        const DATA = [
+            {"escuela": "ADMINISTRACIÓN", "entregados": 184, "total": 246, "faltantes": 62},
+            {"escuela": "ADMINISTRACIÓN DE NEGOCIOS INTERNACIONALES", "entregados": 135, "total": 271, "faltantes": 136},
+            {"escuela": "ARQUITECTURA", "entregados": 581, "total": 706, "faltantes": 125},
+            {"escuela": "CONTABILIDAD", "entregados": 207, "total": 235, "faltantes": 28},
+            {"escuela": "DERECHO", "entregados": 1369, "total": 1635, "faltantes": 266},
+            {"escuela": "ECONOMÍA", "entregados": 457, "total": 526, "faltantes": 69},
+            {"escuela": "EDUCACIÓN", "entregados": 297, "total": 312, "faltantes": 15},
+            {"escuela": "ENFERMERÍA", "entregados": 364, "total": 402, "faltantes": 38},
+            {"escuela": "ESCUELA DE POSGRADO", "entregados": 0, "total": 26, "faltantes": 26},
+            {"escuela": "ESTOMATOLOGÍA", "entregados": 353, "total": 409, "faltantes": 56},
+            {"escuela": "FINANZAS", "entregados": 38, "total": 38, "faltantes": 0},
+            {"escuela": "INGENIERÍA AMBIENTAL", "entregados": 262, "total": 307, "faltantes": 45},
+            {"escuela": "INGENIERÍA CIVIL", "entregados": 649, "total": 804, "faltantes": 155},
+            {"escuela": "INGENIERÍA DE SISTEMAS", "entregados": 341, "total": 393, "faltantes": 52},
+            {"escuela": "INGENIERÍA INDUSTRIAL", "entregados": 270, "total": 307, "faltantes": 37},
+            {"escuela": "MARKETING", "entregados": 140, "total": 156, "faltantes": 16},
+            {"escuela": "MEDICINA HUMANA", "entregados": 1068, "total": 1269, "faltantes": 201},
+            {"escuela": "OBSTETRICIA", "entregados": 339, "total": 372, "faltantes": 33},
+            {"escuela": "PSICOLOGÍA", "entregados": 698, "total": 797, "faltantes": 99},
+            {"escuela": "PUERTO MALDONADO", "entregados": 8, "total": 213, "faltantes": 205},
+            {"escuela": "QUILLABAMBA", "entregados": 55, "total": 295, "faltantes": 240},
+            {"escuela": "SICUANI", "entregados": 58, "total": 113, "faltantes": 55},
+            {"escuela": "TECNOLOGÍA MÉDICA", "entregados": 277, "total": 277, "faltantes": 0},
+            {"escuela": "TURISMO", "entregados": 113, "total": 137, "faltantes": 24},
+            {"escuela": "SEGUNDA ESPECIALIDAD", "entregados": 0, "total": 26, "faltantes": 26}
+        ];
+        // Totales oficiales de la fila TOTAL de la hoja
+        const TOTAL = {entregados: 8263, total: 10246, faltantes: 1983};
 
         const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        const fmt = n => n.toLocaleString('es-PE');
 
-        async function fetchData() {
-            try {
-                const response = await fetch(SHEET_CSV_URL);
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                processData(await response.text());
-                document.getElementById('foot').textContent =
-                    'Actualizado: ' + new Date().toLocaleString('es-PE') + ' · se actualiza solo cada ' + REFRESH_MIN + ' min';
-            } catch (error) {
-                console.error("Error al obtener datos:", error);
-                document.getElementById('tableBody').innerHTML =
-                    '<tr><td colspan="5" style="text-align:center; color:red;">Error al cargar los datos. Verifica el enlace CSV y que esté publicado sin restricción de organización.</td></tr>';
-            }
-        }
+        let tableHTML = '';
+        DATA.forEach(({escuela, entregados, total, faltantes}) => {
+            const porcentaje = total > 0 ? Math.round((entregados / total) * 100) : 0;
+            let colorBarra = 'var(--success)';
+            if (porcentaje < 50) colorBarra = 'var(--danger)';
+            else if (porcentaje < 80) colorBarra = '#fbbc04';
 
-        function processData(csv) {
-            const lines = parseCSV(csv).slice(1); // sin encabezados
-            let totalEntregados = 0, totalCarnes = 0, totalFaltantes = 0;
-            let sumE = 0, sumT = 0, sumF = 0;
-            let tableHTML = '';
+            tableHTML += `
+                <tr>
+                    <td><strong>${esc(escuela)}</strong></td>
+                    <td>${fmt(entregados)}</td>
+                    <td>${fmt(total)}</td>
+                    <td style="color: ${faltantes > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: bold;">${fmt(faltantes)}</td>
+                    <td>
+                        <div style="font-size:0.8em; margin-bottom:2px;">${porcentaje}%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${porcentaje}%; background-color: ${colorBarra};"></div>
+                        </div>
+                    </td>
+                </tr>`;
+        });
 
-            for (const row of lines) {
-                if (row.length < 4 || !row[0].trim()) continue;
+        document.getElementById('totalCarnes').innerText = fmt(TOTAL.total);
+        document.getElementById('totalEntregados').innerText = fmt(TOTAL.entregados);
+        document.getElementById('totalFaltantes').innerText = fmt(TOTAL.faltantes);
+        document.getElementById('tableBody').innerHTML = tableHTML;
 
-                const escuela = row[0].trim();
-                const entregados = parseInt(row[1]) || 0;
-                const total = parseInt(row[2]) || 0;
-                const faltantes = parseInt(row[3]) || 0;
-
-                if (escuela.toUpperCase() === 'TOTAL') {
-                    totalEntregados = entregados;
-                    totalCarnes = total;
-                    totalFaltantes = faltantes;
-                    continue;
-                }
-
-                sumE += entregados; sumT += total; sumF += faltantes;
-
-                const porcentaje = total > 0 ? Math.round((entregados / total) * 100) : 0;
-                let colorBarra = 'var(--success)';
-                if (porcentaje < 50) colorBarra = 'var(--danger)';
-                else if (porcentaje < 80) colorBarra = '#fbbc04';
-
-                tableHTML += `
-                    <tr>
-                        <td><strong>${esc(escuela)}</strong></td>
-                        <td>${entregados.toLocaleString('es-PE')}</td>
-                        <td>${total.toLocaleString('es-PE')}</td>
-                        <td style="color: ${faltantes > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: bold;">${faltantes.toLocaleString('es-PE')}</td>
-                        <td>
-                            <div style="font-size:0.8em; margin-bottom:2px;">${porcentaje}%</div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${porcentaje}%; background-color: ${colorBarra};"></div>
-                            </div>
-                        </td>
-                    </tr>`;
-            }
-
-            // Si la hoja no trae fila TOTAL, se calcula sumando las escuelas
-            if (!totalCarnes) { totalEntregados = sumE; totalCarnes = sumT; totalFaltantes = sumF; }
-
-            document.getElementById('totalCarnes').innerText = totalCarnes.toLocaleString('es-PE');
-            document.getElementById('totalEntregados').innerText = totalEntregados.toLocaleString('es-PE');
-            document.getElementById('totalFaltantes').innerText = totalFaltantes.toLocaleString('es-PE');
-            document.getElementById('tableBody').innerHTML = tableHTML;
-            applyFilter();
-        }
-
-        function applyFilter() {
-            const filter = document.getElementById('searchInput').value.toLowerCase();
+        document.getElementById('searchInput').addEventListener('input', function () {
+            const filter = this.value.toLowerCase();
             document.querySelectorAll('#dataTable tbody tr').forEach(row => {
                 row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
-        }
-
-        document.getElementById('searchInput').addEventListener('input', applyFilter);
-
-        fetchData();
-        setInterval(fetchData, REFRESH_MIN * 60 * 1000);
+        });
     </script>
 </body>
 </html>
