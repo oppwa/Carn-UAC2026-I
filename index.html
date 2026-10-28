@@ -4,122 +4,164 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard X Total Entregados 2026-I</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #1a73e8;
-            --success: #34a853;
-            --danger: #ea4335;
-            --bg: #f4f7f6;
-            --text: #333;
-            --card-bg: #fff;
+            --primary: #194D84;
+            --success: #1a7f37;
+            --danger: #cf222e;
+            --warning: #bf8700;
+            --bg: #EEF3F8;
+            --text: #0F2C49;
+            --text-soft: #57708A;
+            --card-bg: #FFFFFF;
+            --line: #CBDAE7;
+            --rosado-cero: rgba(207, 34, 46, 0.06);
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'IBM Plex Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
             padding: 20px;
         }
         .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: var(--primary); margin: 0; }
-        .header p { color: #666; font-size: 0.9em; }
+        .header h1 { font-family: 'Source Serif 4', serif; color: var(--primary); margin: 0; font-size: 2.05rem; }
+        .header p { color: var(--text-soft); font-size: 0.95em; }
+        
         .kpi-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .kpi-card {
             background: var(--card-bg);
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             border-left: 5px solid var(--primary);
+            border-top: 1px solid var(--line);
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
         .kpi-card.entregados { border-left-color: var(--success); }
         .kpi-card.faltantes { border-left-color: var(--danger); }
-        .kpi-title { font-size: 0.9em; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-        .kpi-value { font-size: 2em; font-weight: bold; margin: 10px 0 0 0; color: var(--text); }
+        .kpi-title { font-size: 0.85em; color: var(--text-soft); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .kpi-value { font-family: 'Source Serif 4', serif; font-size: 2.2em; font-weight: 600; margin: 10px 0 0 0; color: var(--text); }
+        
         .table-container {
             background: var(--card-bg);
             padding: 20px;
-            border-radius: 12px;
+            border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--line);
             overflow-x: auto;
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th {
-            background-color: #f8f9fa;
-            color: #333;
-            padding: 12px;
-            font-weight: 600;
-            border-bottom: 2px solid #ddd;
-            position: sticky;
-            top: 0;
-        }
-        td { padding: 12px; border-bottom: 1px solid #eee; }
-        tr:hover { background-color: #f1f3f4; }
-        .progress-bar { width: 100%; background-color: #e0e0e0; border-radius: 10px; height: 8px; margin-top: 5px; }
-        .progress-fill { height: 8px; border-radius: 10px; background-color: var(--success); }
         .search-box {
-            margin-bottom: 15px;
-            padding: 10px;
+            margin-bottom: 20px;
+            padding: 10px 15px;
             width: 100%;
             max-width: 300px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--line);
             border-radius: 6px;
             font-size: 1em;
+            font-family: 'IBM Plex Sans', sans-serif;
         }
-        .loading { text-align: center; font-size: 1.2em; color: var(--primary); }
-        .foot { color: #666; font-size: 0.85em; margin-top: 12px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+        th {
+            background-color: #f8fafc;
+            color: var(--text-soft);
+            padding: 12px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+        
+        /* Hover normal */
+        tr:hover { background-color: #f1f5f9; }
+        
+        /* Clase para resaltar escuelas con 0 entregados */
+        tr.fila-cero {
+            background-color: var(--rosado-cero);
+            box-shadow: inset 4px 0 0 0 rgba(207, 34, 46, 0.4);
+        }
+        tr.fila-cero:hover {
+            background-color: rgba(207, 34, 46, 0.1);
+        }
+
+        .progress-bar { width: 100%; background-color: #e2e8f0; border-radius: 10px; height: 8px; margin-top: 5px; }
+        .progress-fill { height: 8px; border-radius: 10px; }
+        
+        /* Fila TOTAL */
+        tr.total-row {
+            background-color: #f8fafc;
+            font-weight: 700;
+            border-top: 2px solid var(--primary);
+        }
+        tr.total-row td { border-bottom: none; padding-top: 15px; padding-bottom: 15px; }
+        tr.total-row:hover { background-color: #f8fafc; }
+        
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.5rem; }
+            th, td { padding: 8px; }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>📊 Dashboard de Entregas 2026-I</h1>
-        <p>Carnés entregados por Escuela</p>
+        <h1>📊 X TOTAL ENTREGADOS 2026-I</h1>
+        <p>Seguimiento de carnés entregados por Escuela Profesional</p>
     </div>
 
     <div class="kpi-container">
         <div class="kpi-card">
             <div class="kpi-title">Total Carnés</div>
-            <div class="kpi-value" id="totalCarnes">Cargando...</div>
+            <div class="kpi-value" id="totalCarnes">--</div>
         </div>
         <div class="kpi-card entregados">
             <div class="kpi-title">Total Entregados</div>
-            <div class="kpi-value" id="totalEntregados">Cargando...</div>
+            <div class="kpi-value" id="totalEntregados" style="color: var(--success);">--</div>
         </div>
         <div class="kpi-card faltantes">
             <div class="kpi-title">Total Faltantes</div>
-            <div class="kpi-value" id="totalFaltantes">Cargando...</div>
+            <div class="kpi-value" id="totalFaltantes" style="color: var(--danger);">--</div>
         </div>
     </div>
 
     <div class="table-container">
-        <input type="text" id="searchInput" class="search-box" placeholder="Buscar escuela...">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 Buscar escuela...">
         <table id="dataTable">
             <thead>
                 <tr>
-                    <th>Escuela</th>
-                    <th>Carné Entregados</th>
-                    <th>Total Carnés</th>
-                    <th>Carné Faltantes</th>
-                    <th>Progreso</th>
+                    <th>Escuela Profesional</th>
+                    <th style="text-align: right;">Carné Entregados</th>
+                    <th style="text-align: right;">Total Carnés</th>
+                    <th style="text-align: right;">Carné Faltantes</th>
+                    <th style="width: 200px;">Progreso</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
-                <tr><td colspan="5" class="loading">Cargando datos...</td></tr>
+                <tr><td colspan="5" style="text-align: center; padding: 20px;">Cargando datos...</td></tr>
             </tbody>
         </table>
-        
     </div>
 
     <script>
-        // Datos incluidos directamente en el archivo (no se carga nada externo)
+        // Datos exactos extraídos de la imagen proporcionada
         const DATA = [
             {"escuela": "ADMINISTRACIÓN", "entregados": 184, "total": 246, "faltantes": 62},
             {"escuela": "ADMINISTRACIÓN DE NEGOCIOS INTERNACIONALES", "entregados": 213, "total": 271, "faltantes": 58},
@@ -147,7 +189,8 @@
             {"escuela": "TURISMO", "entregados": 113, "total": 137, "faltantes": 24},
             {"escuela": "SEGUNDA ESPECIALIDAD", "entregados": 0, "total": 26, "faltantes": 26}
         ];
-        // Totales oficiales de la fila TOTAL de la hoja
+        
+        // Totales oficiales de la fila TOTAL de la imagen
         const TOTAL = {entregados: 8349, total: 10246, faltantes: 1897};
 
         const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -156,18 +199,25 @@
         let tableHTML = '';
         DATA.forEach(({escuela, entregados, total, faltantes}) => {
             const porcentaje = total > 0 ? Math.round((entregados / total) * 100) : 0;
+            
+            // Colores de barra según avance
             let colorBarra = 'var(--success)';
             if (porcentaje < 50) colorBarra = 'var(--danger)';
-            else if (porcentaje < 80) colorBarra = '#fbbc04';
+            else if (porcentaje < 80) colorBarra = 'var(--warning)';
+
+            // Verificar si la escuela tiene 0 entregados para aplicar el color rosado
+            const claseFila = entregados === 0 ? 'fila-cero' : '';
 
             tableHTML += `
-                <tr>
+                <tr class="${claseFila}">
                     <td><strong>${esc(escuela)}</strong></td>
-                    <td>${fmt(entregados)}</td>
-                    <td>${fmt(total)}</td>
-                    <td style="color: ${faltantes > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: bold;">${fmt(faltantes)}</td>
+                    <td style="text-align: right;">${fmt(entregados)}</td>
+                    <td style="text-align: right;">${fmt(total)}</td>
+                    <td style="text-align: right; color: ${faltantes > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: 600;">${fmt(faltantes)}</td>
                     <td>
-                        <div style="font-size:0.8em; margin-bottom:2px;">${porcentaje}%</div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:2px;">
+                            <span>${porcentaje}%</span>
+                        </div>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${porcentaje}%; background-color: ${colorBarra};"></div>
                         </div>
@@ -175,14 +225,36 @@
                 </tr>`;
         });
 
+        // Agregar fila TOTAL al final
+        const porcentajeTotal = Math.round((TOTAL.entregados / TOTAL.total) * 100);
+        tableHTML += `
+            <tr class="total-row">
+                <td>TOTAL</td>
+                <td style="text-align: right;">${fmt(TOTAL.entregados)}</td>
+                <td style="text-align: right;">${fmt(TOTAL.total)}</td>
+                <td style="text-align: right; color: var(--danger);">${fmt(TOTAL.faltantes)}</td>
+                <td>
+                    <div style="display:flex; justify-content:space-between; font-size:0.8em; margin-bottom:2px;">
+                        <span style="color: var(--primary); font-weight:bold;">${porcentajeTotal}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${porcentajeTotal}%; background-color: var(--primary);"></div>
+                    </div>
+                </td>
+            </tr>`;
+
+        // Insertar datos en el DOM
         document.getElementById('totalCarnes').innerText = fmt(TOTAL.total);
         document.getElementById('totalEntregados').innerText = fmt(TOTAL.entregados);
         document.getElementById('totalFaltantes').innerText = fmt(TOTAL.faltantes);
         document.getElementById('tableBody').innerHTML = tableHTML;
 
+        // Funcionalidad del buscador
         document.getElementById('searchInput').addEventListener('input', function () {
             const filter = this.value.toLowerCase();
             document.querySelectorAll('#dataTable tbody tr').forEach(row => {
+                // No ocultar la fila TOTAL al buscar
+                if (row.classList.contains('total-row')) return; 
                 row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
         });
